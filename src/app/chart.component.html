@@ -1,0 +1,28 @@
+<button (click)="test()">Click Me!</button>
+
+
+
+<div *ngIf="optionsEnabled">
+	<select (change)="setFactSelected($event.target.value)">
+		<option> - select fact - </option>
+		<option *ngFor="let fact of facts;" [value]="fact" >
+			{{fact}}
+		</option>
+	</select>
+	
+	<select (change)="setShopSelected($event.target.value)">
+		<option *ngFor="let shop of shops;" [value]="shop" >
+			{{shop}}
+		</option>
+	</select>
+
+	<select (change)="setCustTypeSelected($event.target.value)">
+		<option *ngFor="let group of custTypes;" [value]="group" >
+			{{group}}
+		</option>
+	</select>
+	
+</div>
+
+
+<svg #chartArea></svg>

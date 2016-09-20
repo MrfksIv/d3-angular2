@@ -1,3 +1,18 @@
 <h1>
   {{title}}
 </h1>
+<app-newcomp [property]="lololo" (clicked)="onClicked($event)"></app-newcomp>
+
+<div *ngIf="value">
+	Value from the app-newcomp: <label #labelValue> {{value }}</label> 
+
+	<p> Value from local reference to label: {{ labelValue.textContent }} </p>
+	
+</div>
+	
+<h1> Charting Time!</h1>
+
+<app-chart></app-chart>
+
+
+
