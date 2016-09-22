@@ -1,8 +1,5 @@
-<button (click)="test()">Click Me!</button>
 
-
-
-<div *ngIf="optionsEnabled">
+<div *ngIf="ready">
 	<select (change)="setFactSelected($event.target.value)">
 		<option> - select fact - </option>
 		<option *ngFor="let fact of facts;" [value]="fact" >

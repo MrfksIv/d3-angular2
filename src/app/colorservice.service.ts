@@ -7,7 +7,7 @@ export class ColorService {
 
   	public colors = {
 
-  		blue: ["#003F87", "#7EB6FF", "#5993E5", "#499DF5", "#C6E2FF", "#60AFFE", "#003F87", "#CAE1FF", "#2C5197", "#D9D9F3" ],
+  		blues: ["#C1F0F6", "#05E9FF", "#50A6C2", "#00688B", "#104E8B", "#1874CD", "#003EFF", "#CAE1FF", "#2F2F4F", "#AAAAFF", "#191970" ],
   		red: [],
   		orange: []
   	}
