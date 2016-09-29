@@ -1,25 +1,41 @@
 
-<div *ngIf="ready">
-	<select (change)="setFactSelected($event.target.value)">
-		<option> - select fact - </option>
-		<option *ngFor="let fact of facts;" [value]="fact" >
-			{{fact}}
-		</option>
-	</select>
-	
-	<select (change)="setShopSelected($event.target.value)">
-		<option *ngFor="let shop of shops;" [value]="shop" >
-			{{shop}}
-		</option>
-	</select>
 
-	<select (change)="setCustTypeSelected($event.target.value)">
-		<option *ngFor="let group of custTypes;" [value]="group" >
-			{{group}}
-		</option>
-	</select>
-	
+<div class="container-fluid" style="margin:0 300px 100px 60px">
+
+	<div class="row">
+		<div class="col-lg-3 col-md-4 " >
+			
+			<div *ngIf="dataReady">
+				<div style="width: 230px; margin-bottom: 20px;">
+					
+					<ng-select [items]="facts"
+							[allowClear] = "true"
+							[multiple] = "false"
+							(data) ="value"
+							[active] ="[facts[0]]"
+							(selected) = "setFactSelected($event)"
+							placeholder="No fact selected">
+					</ng-select>
+					
+				</div>
+				<div style="width: 230px; margin-bottom: 20px;">
+					
+					<ng-select [items]="custTypes"
+							[allowClear] = "true"
+							[multiple] = "false"
+							[active] ="[custTypes[0]]"
+							(selected) = "setCustTypeSelected($event)"
+							placeholder="No fact selected">
+					</ng-select>
+					
+				</div>
+				<input type="checkbox" [(ngModel)]="includeNational" (change)="toggle()"><label>Include National</label>
+			</div>
+		</div>
+		<div class="col-lg-9 col-md-8">
+			<svg #chartArea></svg>
+		</div>
+	</div>
 </div>
 
 
-<svg #chartArea></svg>

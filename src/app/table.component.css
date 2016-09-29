@@ -1,0 +1,5 @@
+.table-container{
+	overflow: auto;
+	max-width:1400px;
+	margin: 0 auto;
+}

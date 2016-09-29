@@ -9,19 +9,27 @@ import { LoadDataService } from './load-data.service';
 import { ChartComponent } from './chart.component';
 
 import { ColorService } from './colorservice.service';
+import { TooltipService } from './tooltip.service';
+import { TableComponent } from './table.component';
+
+import { SelectComponent } from "ng2-select";
+import {SelectModule} from 'ng2-select';
 
 @NgModule({
   declarations: [
     AppComponent,
     NewcompComponent,
-    ChartComponent
+    ChartComponent,
+    TableComponent
   ],
   imports: [
     BrowserModule,
     FormsModule,
-    HttpModule
+    HttpModule,
+    SelectModule
+    
   ],
-  providers: [LoadDataService, ColorService],
+  providers: [LoadDataService, ColorService, TooltipService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

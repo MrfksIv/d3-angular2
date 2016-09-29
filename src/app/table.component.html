@@ -1,0 +1,68 @@
+
+
+<div class="container" style="margin:0 100px;">
+	<h1> Table </h1>
+	<div class="row">
+		<div class="col-lg-3">
+			<div  *ngIf="dataReady">
+				
+				<div style="width: 260px; margin-bottom: 20px; display: inline-block">
+					<button class="btn btn-success" (click)="factFilterToggle()" [class.btn-danger]="factFilter">
+						<span class="glyphicon" [ngClass]="factFilter ? 'glyphicon-remove' : 'glyphicon-filter' "></span> <!--	glyphicon glyphicon-remove-->
+					</button>
+					<pre> {{itemsToString(selectedFacts)}} </pre>
+					<ng-select [items]="facts"
+							[allowClear] = "true"
+							[multiple] = "true"
+							[disabled] = "!factFilter"
+							(data) ="value"
+							(removed) ="factRemoved($event)"
+							(selected) = "factAdded($event)"
+							placeholder="No fact selected">
+					</ng-select>
+
+					
+				</div>
+				<div style="width: 260px; margin-bottom: 20px; display: inline-block">
+					<button class="btn btn-success" (click)="shopFilterToggle()" [class.btn-danger]="shopFilter">
+						<span class="glyphicon" [ngClass]="shopFilter ? 'glyphicon-remove' : 'glyphicon-filter' "></span>
+					</button>
+					<pre>{{itemsToString(selectedShops)}}</pre>
+					<ng-select [items]="shops"
+							[allowClear] = "true"
+							[multiple] = "true"
+							[disabled] = "!shopFilter"
+							(data) ="value"
+							(removed) ="shopRemoved($event)"
+							(selected) = "shopAdded($event)"
+							placeholder="No shop selected">
+					</ng-select>
+					
+				</div>
+				<div style="width: 260px; margin-bottom: 20px; display: inline-block">
+					<button class="btn btn-success"(click)="custFilterToggle()" [class.btn-danger]="custTypeFilter">
+						<span class="glyphicon" [ngClass]="custTypeFilter ? 'glyphicon-remove' : 'glyphicon-filter' "></span>
+					</button>
+					<pre>{{itemsToString(selectedCustTypes)}}</pre>
+					<ng-select [items]="custTypes"
+							[allowClear] = "true"
+							[multiple] = "true"
+							[disabled] = "!custTypeFilter"
+							(data) ="value"
+							(removed) ="custTypeRemoved($event)"
+							(selected) = "custTypeAdded($event)"
+							placeholder="No customer type selected">
+					</ng-select>
+					
+				</div>
+
+			</div>
+		</div>
+		<div class="col-lg-9">
+			<table id="table" class="table table-bordered table-hover table-responsive"></table>
+		</div>
+	</div>
+</div>
+
+
+

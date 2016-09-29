@@ -1,14 +1,16 @@
 import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { LoadDataService } from './load-data.service';
 import { ColorService } from './colorservice.service';  
+import { TooltipService } from './tooltip.service';  
+import { Subscription } from 'rxjs/Subscription';
+import { SelectComponent} from "ng2-select";
+
 
 import * as d3 from 'd3';
 
 //import * as $ from 'jquery';
 
 declare var $:JQueryStatic;
-
-import { Subscription } from 'rxjs/Subscription';
 
 
 
@@ -18,7 +20,6 @@ import { Subscription } from 'rxjs/Subscription';
   styleUrls: ['./chart.component.css']
 })
 export class ChartComponent implements OnInit, AfterViewInit {
-
   
 
   chartData;
@@ -32,24 +33,30 @@ export class ChartComponent implements OnInit, AfterViewInit {
   facts = [];
   shops = []
   custTypes = [];
+  includeNational : boolean = true;
 
   selectedShop;
-  selectedFact;
+  selectedFact ;
   selectedCustType;
 
   subscriptionInitialData: Subscription; 
   subscriptionTransformedData: Subscription; 
 
-  ready : boolean = false;
+  dataReady : boolean = false;
+  chartReady: boolean = false;
 
   @ViewChild('chartArea') svgElement: HTMLElement;
 
-  constructor(private lds : LoadDataService, private colourService: ColorService, private elementRef : ElementRef) { }
+  constructor(private lds : LoadDataService, 
+              private colourService: ColorService, 
+              private elementRef : ElementRef,
+              private tooltip : TooltipService) { }
 
   ngOnInit() {
     this.subscriptionInitialData = this.lds.data$.subscribe(
       data => {
         this.chartData = data;
+
       }
     );
     this.lds.loadData();  
@@ -58,38 +65,33 @@ export class ChartComponent implements OnInit, AfterViewInit {
       data => {
         this.transformedData = data;
         this.getFilterOptions();
+        this.change();
       }
-
     )
-
-  	
  }
 
   ngAfterViewInit() {
 
-    console.log("viewInit");
-    this.createTooltip();
+    this.tooltip.createTooltip();
     this.createSvg();
-
+    
 
   }
 
   getFilterOptions() {
 
     this.getFacts();
-
     this.getCustomerTypes();
-    this.setCustTypeSelected(this.custTypes[0]);
-
+    
     this.getShopNames();
-    this.setShopSelected(this.shops[0]);
-    this.ready = true;
+    this.dataReady = true;
 
   }
 
   getCustomerTypes() {
     let nest = d3.nest().key(function(d){ return d.list}).entries(this.transformedData);
     nest.forEach( elem => this.custTypes.push(elem.key));
+    this.selectedCustType = this.custTypes[0];
   }
 
   getShopNames() {
@@ -100,20 +102,19 @@ export class ChartComponent implements OnInit, AfterViewInit {
   getFacts() {
     let nest = d3.nest().key(function(d){ return d.FACTS}).entries(this.transformedData);
     nest.forEach( elem => this.facts.push(elem.key));
+    this.selectedFact = this.facts[0];
+    this.chartReady = true;
   }
 
   setFactSelected(fact: string) {
-    this.selectedFact = fact;
-    this.change();
+    this.selectedFact = fact.text;
+    console.log(fact, this.selectedFact);
+    this.redraw();
     
   }
 
-  setShopSelected(shop: string) {
-    this.selectedShop = shop;
-  }
-
   setCustTypeSelected(custType : string) {
-    this.selectedCustType = custType;
+    this.selectedCustType = custType.text;
     this.change();
   }
 
@@ -123,14 +124,18 @@ export class ChartComponent implements OnInit, AfterViewInit {
             //    .filter( elem => elem["store"] === this.selectedShop);
   }
 
+  toggle() {
+    this.includeNational = !this.includeNational;
+    this.change();
+  }
+
 
 
 
   createSvg() {
-
     
-    let margin = {top: 50, right: 160, bottom: 80, left: 150},
-        width = 1300 - margin.left - margin.right,
+    let margin = {top: 30, right: 200, bottom: 80, left: 75},
+        width = 1100 - margin.left - margin.right,
         height = 670 - margin.top - margin.bottom;
     
     var svg : any = d3.select(this.elementRef.nativeElement)
@@ -155,44 +160,33 @@ export class ChartComponent implements OnInit, AfterViewInit {
       .attr("y", 0)
       .attr("width", width)
       .attr("height", height);  
-
-    
-
- //   svg.call(d3.zoom().on("wheel", zoomed));
-
-    
   }
 
-  change() {
 
+ change() {
+   console.log("change!");
     d3.transition()
       .duration(1000)
       .each(() => {return this.redraw()});
   }
+
   
   redraw(){
 
     let dataTr = this.getDatafromTransformed(this.selectedFact, this.selectedCustType);
-
-    console.log("creating chart...");
     console.log(dataTr);
- 
-    var parseTime : any = d3.timeParse("%b %Y");
-
-    let x = d3.scaleTime()
-        .range([0, this.options.width])
-        .domain(d3.extent(dataTr, function(d){return d.date }));
-
-       let y = d3.scaleLinear()
-        .range([this.options.height, 0])
-        .domain([0, d3.max(dataTr, function(d){return parseFloat(d.val ? d.val : 0) })]);
-
-    console.log([0, d3.max(dataTr, function(d){return parseFloat(d.val ? d.val : 0)  })]);
+    let parseTime : any = d3.timeParse("%b %Y");
 
     var data = d3.nest()
       .key(function(d) { return d.store; })
       .map(dataTr);
 
+      console.log(data);
+
+
+    if (!this.includeNational){
+      data.remove("National");
+    }
 
     var color = d3.scaleOrdinal().range(
       this.colourService.colors.blues.slice(0,this.shops.length)
@@ -201,6 +195,35 @@ export class ChartComponent implements OnInit, AfterViewInit {
     let svg = this.options.svg;
     let margins = this.options.margins;
 
+    color.domain(data.keys());
+
+   
+    var lineData = color.domain().map( elem => {
+      return {
+        name: elem,
+        values: data.get(elem).map( (d) => {
+          return {name:d.store, date: d.date, value: parseFloat(d.val ? d.val : "0")}
+        })
+      }
+    });
+
+   
+    var tmp = [];
+      lineData.forEach( (elem) => tmp = tmp.concat(elem.values));
+
+      let x = d3.scaleTime()
+        .range([0, this.options.width])
+        .domain(d3.extent(tmp, function(d){return d.date }));
+
+
+
+       let y = d3.scaleLinear()
+        .range([this.options.height, 0])
+        .domain([0, d3.max(tmp, function(d){return parseFloat(d.value ? d.value : 0) })]);
+
+    var lastvalues=[];
+    color.domain().forEach( (elem) => lastvalues.push(parseFloat(data.get(elem)[data.get(elem).length-1].val)));
+    
     let xAxis = d3.axisBottom(x)
                   .tickPadding(8)
                   .ticks(5);
@@ -216,34 +239,11 @@ export class ChartComponent implements OnInit, AfterViewInit {
 
 
 
-  //  console.log(data.keys());
-
-    color.domain(data.keys());
-
- //   console.log(data.get(color.domain()[0]));
-    
-    var lineData = color.domain().map( elem => {
-      return {
-        name: elem,
-        values: data.get(elem).map( (d) => {
-          return {name:d.store, date: d.date, value: parseFloat(d.val ? d.val : "0")}
-        })
-      }
-    });
-
-    var lastvalues=[];
-
-    color.domain().forEach( (elem) => lastvalues.push(parseFloat(data.get(elem)[data.get(elem).length-1].val)));
-
-
-
-    
 
     var line = d3.line()
       .x(function(d) {return x(d.date)})
       .y(function(d) {return y(d.value)});
 
-  //  console.log(lineData);
 
 
     var theGraph = svg.selectAll(".thegraph")
@@ -299,10 +299,9 @@ export class ChartComponent implements OnInit, AfterViewInit {
       .attr("class", "line")
       .style("stroke", function(d) { return color(d.name); })
       .attr("d", function(d) { 
-        console.log("in theGraphEnter.apend('path')");
-        console.log(d.values);
-        console.log(d.values[0]);
+
         return line(d.values[0]); })
+
       .transition()
       .duration(2000)
       .attrTween('d',function (d){
@@ -316,7 +315,7 @@ export class ChartComponent implements OnInit, AfterViewInit {
       });
 
       
-    theGraph.selectAll("circle")
+    theGraphEnter.selectAll("circle")
       .data( function(d) {return(d.values);} )
       .enter()
       .append("circle")
@@ -324,10 +323,19 @@ export class ChartComponent implements OnInit, AfterViewInit {
       .attr("cx", function(d,i){return x(d.date)})
       .attr("cy",function(d,i){return y(d.value)})
       .attr("r",12)
-      .style('opacity', 0.5);
+      .style('opacity', 1e-6)
+      .attr('fill', "blue")
+      .attr("title", function(d,i){
+        var NumbType = d3.format(",.2f");  
+        var formatDate = d3.timeFormat("%b %d, '%y");         
+        let tip = '<h4 class="tip1">' + d.name + '</h4><h5 class="tip2">' + NumbType(d.value) + '</h5> <p class="tip3">'+  formatDate(d.date)+'</p>';
+        return tip;
+      });
+
 
     var legend = svg.selectAll('.legend')
-      .data(lineData);
+      .data(lineData, function(d){ return d.name});
+
 
     var legendEnter=legend
       .enter()
@@ -336,19 +344,19 @@ export class ChartComponent implements OnInit, AfterViewInit {
       .attr('id',function(d){ return d.name; })
       .on('click', function (d) {                           //onclick function to toggle off the lines          
           if($(this).css("opacity") == 1){  
-            console.log($(this));        //uses the opacity of the item clicked on to determine whether to turn the line on or off          
+   //uses the opacity of the item clicked on to determine whether to turn the line on or off          
 
             var elemented = document.getElementById(this.id +"-line");   //grab the line that has the same ID as this point along w/ "-line"  use get element cause ID has spaces
             d3.select(elemented)
               .transition()
-              .duration(1000)
+              .duration(500)
               .style("opacity",0)
                .style("display",'none');
           
             d3.select(this)
               .attr('fakeclass', 'fakelegend')
              .transition()
-              .duration(1000)
+              .duration(500)
               .style ("opacity", .2);
           } else {
           
@@ -356,7 +364,7 @@ export class ChartComponent implements OnInit, AfterViewInit {
             d3.select(elemented)
               .style("display", "block")
               .transition()
-              .duration(1000)
+              .duration(500)
               .style("opacity",1);
           
             d3.select(this)
@@ -367,140 +375,88 @@ export class ChartComponent implements OnInit, AfterViewInit {
           }
       });
 
+   
+    let tmpRange = [0,30,60,90,120,150,180,210,240,270,300,330,360,390];
 
-    
-
-    
+    lastvalues.sort(function(a,b){return b-a});
 
     var legendscale= d3.scaleOrdinal()
         .domain(lastvalues)
-        .range([0,30,60,90,120,150,180,210]);
-
+        .range(tmpRange.slice(0, lastvalues.length ));
 
 
   //actually add the circles to the created legend container
-    legendEnter.append('circle')
+     
+   
+    //  .attr("cy", function(d){return legendscale(d.values[d.values.length-1].value);})
+    d3.selectAll(".legend-circle").transition().duration(100).remove();
+    d3.selectAll(".legend-text").remove();
+
+    svg.selectAll('.legend')
+      .data(lineData, function(d){ return d.name})
+        .append("circle")
+        .attr("class", "legend-circle")
         .attr('cx', this.options.width +20)
-        .attr('cy', function(d){return legendscale(d.values[d.values.length-1].value);})
+        .attr('class', 'legend-circle')
+        .attr('cy', function(d){
+          console.log(d.values[d.values.length-1].value +" =>" + legendscale(d.values[d.values.length-1].value))
+          return legendscale(d.values[d.values.length-1].value);})
         .attr('r', 7)
+        .style("fill", "blue")
+        .transition()
+        .duration(300)
         .style('fill', function(d) { 
             return color(d.name);
         });
                     
   //add the legend text
-    legendEnter.append('text')
-        .attr('x', this.options.width+35)
-        .attr('y', function(d){return legendscale(d.values[d.values.length-1].value);})
-        .text(function(d){ return d.name; });
+    svg.selectAll('.legend')
+      .data(lineData, function(d){ return d.name})
+      .append('text')
+      .style("fill","white")
+      .attr("class", "legend-text")
+      .attr('x', this.options.width+35)
+      .attr('y', function(d){return legendscale(d.values[d.values.length-1].value);})
+      .text(function(d){ return d.name; })
+      .transition()
+      .duration(300)
+      .style("fill", "black");
+
+
+     d3.selectAll(".legend-circle")
+      .exit().remove();
 
    // set variable for updating visualization
     var thegraphUpdate = d3.transition(theGraph);
 
- 
+
+
     // update the axes,   
     d3.selectAll(".line")
       .data(lineData)
       .transition()
       .duration(1000)
       .attr("d", function(d){ return line(d.values)});
-      
 
-    d3.transition(svg).select(".y.axis")
-      .call(yAxis);   
+    theGraph.selectAll("circle")
+      .data( function(d) {return(d.values);} )
+      .attr("title",function(d,i){
+        var NumbType = d3.format(",.2f");  
+        var formatDate = d3.timeFormat("%b %d, '%y");         
+        let tip = '<h4 class="tip1">' + d.name + '</h4><h5 class="tip2">' + NumbType(d.value) + '</h5> <p class="tip3">'+  formatDate(d.date)+'</p>';
+        return tip;
+      })
+      .attr("cy", function(d,i) {return y(d.value);})
+      .attr("cx", function(d,i) {return x(d.date);});
+      
+      $('g circle.tipcircle').tipsy({opacity:.9, gravity:'n', html:true});
+
+      d3.transition(svg).select(".y.axis")
+        .call(yAxis);   
           
-    d3.transition(svg).select(".x.axis")
-      .attr("transform", "translate(0," + this.options.height + ")")
+      d3.transition(svg).select(".x.axis")
+        .attr("transform", "translate(0," + this.options.height + ")")
         .call(xAxis);
 
-
-
-  
-     function zoomed() {
- 
-      svg.select(".x.axis").call(xAxis);
-      svg.select(".y.axis").call(yAxis);
-
-    svg.selectAll(".tipcircle")
-      .attr("cx", function(d,i){return x(d.date)})
-      .attr("cy",function(d,i){return y(d.value)});
-      
-    svg.selectAll(".line")
-        .attr("class","line")
-          .attr("d", function (d) { return line(d.values)});
-    }
   }
-
-
-  createTooltip(){
-    (function($) {
-
-  var nvtooltip = window.nvtooltip = {};
-
-  nvtooltip.show = function(pos, content, gravity, dist) {
-    var container = $('<div class="nvtooltip">');
-
-    gravity = gravity || 's';
-    dist = dist || 20;
-
-    container
-      .html(content)
-      .css({left: -1000, top: -1000, opacity: 0})
-      .appendTo('body');
-
-    var height = container.height() + parseInt(container.css('padding-top'))  + parseInt(container.css('padding-bottom')),
-        width = container.width() + parseInt(container.css('padding-left'))  + parseInt(container.css('padding-right')),
-        windowWidth = $(window).width(),
-        windowHeight = $(window).height(),
-        scrollTop = $('body').scrollTop(),  //TODO: also adjust horizontal scroll
-        left, top;
-
-
-    //TODO: implement other gravities
-    switch (gravity) {
-      case 'e':
-      case 'w':
-      case 'n':
-        left = pos[0] - (width / 2);
-        top = pos[1] + dist;
-        if (left < 0) left = 5;
-        if (left + width > windowWidth) left = windowWidth - width - 5;
-        if (scrollTop + windowHeight < top + height) top = pos[1] - height - dist;
-        break;
-      case 's':
-        left = pos[0] - (width / 2);
-        top = pos[1] - height - dist;
-        if (left < 0) left = 5;
-        if (left + width > windowWidth) left = windowWidth - width - 5;
-        if (scrollTop > top) top = pos[1] + dist;
-        break;
-    }
-
-    container
-        .css({
-          left: left,
-          top: top,
-          opacity: 1
-        });
-  };
-
-  nvtooltip.cleanup = function() {
-    var tooltips = $('.nvtooltip');
-
-    // remove right away, but delay the show with css
-    tooltips.css({
-        'transition-delay': '0 !important',
-        '-moz-transition-delay': '0 !important',
-        '-webkit-transition-delay': '0 !important'
-    });
-
-    tooltips.css('opacity',0);
-
-    setTimeout(function() {
-      tooltips.remove()
-    }, 500);
-  };
-
-})($);
-  }
- 
 }
